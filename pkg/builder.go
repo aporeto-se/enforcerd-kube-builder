@@ -14,8 +14,24 @@ import (
 const (
 	EnforcerdLogLevelDefault  = "info"
 	EnforcerdLogFormatDefault = "json"
-	CniBinDirDefault          = "/opt/cni/bin"
-	CniConfDirDefault         = "/etc/cni/net.d"
+
+	CustomCniBinDir = "/opt/cni/bin"
+	CustomConfDir   = "/etc/cni/net.d"
+
+	EksCniBinDir = "/opt/cni/bin"
+	EksConfDir   = "/etc/cni/net.d"
+
+	GkeCniBinDir = "/home/kubernetes/bin"
+	GkeConfDir   = "/etc/cni/net.d"
+
+	AksCniBinDir = "/opt/cni/bin"
+	AksConfDir   = "/etc/cni/net.d"
+
+	Ocp4CniBinDir = "/var/lib/cni/bin"
+	Ocp4ConfDir   = "/etc/kubernetes/cni/net.d"
+
+	TkgiCniBinDir = "/var/vcap/jobs/kubelet/packages/cni/bin"
+	TkgiConfDir   = "/etc/cni/net.d"
 )
 
 type Builder struct {
@@ -28,7 +44,7 @@ type Builder struct {
 	enforcerdApi                      string
 	cniBinDir                         string
 	cniConfDir                        string
-	clusterType                       string
+	args                              []string
 	enforcerdTransmitterQueueCount    int32
 	enforcerdReceiverQueueCount       int32
 	enforcerdFlowReportingInterval    string
@@ -164,8 +180,6 @@ func newDefault() *Builder {
 	return &Builder{
 		enforcerdLogLevel:                 EnforcerdLogLevelDefault,
 		enforcerdLogFormat:                EnforcerdLogFormatDefault,
-		cniBinDir:                         CniBinDirDefault,
-		cniConfDir:                        CniConfDirDefault,
 		enforcerdTransmitterQueueCount:    2,
 		enforcerdReceiverQueueCount:       2,
 		enforcerdFlowReportingInterval:    "5m",
@@ -187,7 +201,9 @@ func NewEks(enforcerdNamespace, enforcerdApi string) *Builder {
 	b := newDefault()
 	b.enforcerdNamespace = enforcerdNamespace
 	b.enforcerdApi = enforcerdApi
-	b.clusterType = "eks"
+	b.args = append(b.args, "--tag=clustertype=eks")
+	b.cniBinDir = EksCniBinDir
+	b.cniConfDir = EksConfDir
 	return b
 }
 
@@ -195,7 +211,9 @@ func NewGke(enforcerdNamespace, enforcerdApi string) *Builder {
 	b := newDefault()
 	b.enforcerdNamespace = enforcerdNamespace
 	b.enforcerdApi = enforcerdApi
-	b.clusterType = "gke"
+	b.args = append(b.args, "--tag=clustertype=gke")
+	b.cniBinDir = GkeCniBinDir
+	b.cniConfDir = GkeConfDir
 	return b
 }
 
@@ -203,7 +221,30 @@ func NewAks(enforcerdNamespace, enforcerdApi string) *Builder {
 	b := newDefault()
 	b.enforcerdNamespace = enforcerdNamespace
 	b.enforcerdApi = enforcerdApi
-	b.clusterType = "aks"
+	b.args = append(b.args, "--tag=clustertype=aks")
+	b.cniBinDir = AksCniBinDir
+	b.cniConfDir = AksConfDir
+	return b
+}
+
+func NewOcp4(enforcerdNamespace, enforcerdApi string) *Builder {
+	b := newDefault()
+	b.enforcerdNamespace = enforcerdNamespace
+	b.enforcerdApi = enforcerdApi
+	b.args = append(b.args, "--tag=clustertype=ocp4")
+	b.cniBinDir = Ocp4CniBinDir
+	b.cniConfDir = Ocp4ConfDir
+	return b
+}
+
+func NewTkgi(enforcerdNamespace, enforcerdApi string) *Builder {
+	b := newDefault()
+	b.enforcerdNamespace = enforcerdNamespace
+	b.enforcerdApi = enforcerdApi
+	b.args = append(b.args, "--default-docker-configpath=/var/vcap/store/docker/docker")
+	b.args = append(b.args, "--tag=clustertype=tkgi")
+	b.cniBinDir = TkgiCniBinDir
+	b.cniConfDir = TkgiConfDir
 	return b
 }
 
@@ -211,7 +252,9 @@ func NewCustom(enforcerdNamespace, enforcerdApi string) *Builder {
 	b := newDefault()
 	b.enforcerdNamespace = enforcerdNamespace
 	b.enforcerdApi = enforcerdApi
-	b.clusterType = "custom"
+	b.args = append(b.args, "--tag=clustertype=custom")
+	b.cniBinDir = CustomCniBinDir
+	b.cniConfDir = CustomConfDir
 	return b
 }
 
@@ -273,7 +316,7 @@ func (t *Builder) Build() *EnforcerdDaemonset {
 			WithAdd("NET_RAW").WithAdd("SYS_RESOURCE").WithAdd("SYS_ADMIN").WithAdd("SYS_MODULE"))
 
 	container := k8sapccore1.Container().WithName("enforcerd").WithImage("gcr.io/prismacloud-cns/enforcerd:v1.1538.1").
-		WithImagePullPolicy(k8scorev1.PullIfNotPresent).WithVolumeMounts(t.volumeMounts...).WithArgs("--tag=clustertype=" + t.clusterType).
+		WithImagePullPolicy(k8scorev1.PullIfNotPresent).WithVolumeMounts(t.volumeMounts...).WithArgs(t.args...).
 		WithSecurityContext(securityContext).WithCommand("/enforcerd").WithEnv(t.envVars...)
 
 	podSpec := k8sapccore1.PodSpec().WithVolumes(t.volumes...).WithTerminationGracePeriodSeconds(600).

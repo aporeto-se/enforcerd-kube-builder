@@ -15,4 +15,20 @@ func main() {
 	b, _ := yaml.Marshal(daemonSet.DaemonSet)
 	fmt.Println(string(b))
 
+	// kubeconfig.CoreV1().Namespaces().Apply(ctx, daemonSet.Namespace, k8smetav1.ApplyOptions{
+	// 	FieldManager: "cloud-operator",
+	// })
+
+	// kubeconfig.RbacV1().ClusterRoleBindings().Apply(ctx, daemonSet.ClusterRoleBinding, k8smetav1.ApplyOptions{
+	// 	FieldManager: "cloud-operator",
+	// })
+
+	// kubeconfig.CoreV1().ServiceAccounts("aporeto").Apply(ctx, daemonSet.ServiceAccount, k8smetav1.ApplyOptions{
+	// 	FieldManager: "cloud-operator",
+	// })
+
+	// kubeconfig.AppsV1().DaemonSets("aporeto").Apply(ctx, daemonSet.DaemonSet, k8smetav1.ApplyOptions{
+	// 	FieldManager: "cloud-operator",
+	// })
+
 }
